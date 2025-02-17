@@ -119,6 +119,11 @@ var BitArray = class _BitArray {
     return new _BitArray(buffer);
   }
 };
+var UtfCodepoint = class {
+  constructor(value2) {
+    this.value = value2;
+  }
+};
 function byteArrayToInt(byteArray, start3, end, isBigEndian, isSigned) {
   const byteSize = end - start3;
   if (byteSize <= 6) {
@@ -263,6 +268,16 @@ function structurallyCompatibleObjects(a2, b) {
     return false;
   return a2.constructor === b.constructor;
 }
+function remainderInt(a2, b) {
+  if (b === 0) {
+    return 0;
+  } else {
+    return a2 % b;
+  }
+}
+function divideInt(a2, b) {
+  return Math.trunc(divideFloat(a2, b));
+}
 function divideFloat(a2, b) {
   if (b === 0) {
     return 0;
@@ -282,6 +297,14 @@ function makeError(variant, module, line, fn, message, extra) {
   return error;
 }
 
+// build/dev/javascript/gleam_stdlib/gleam/order.mjs
+var Lt = class extends CustomType {
+};
+var Eq = class extends CustomType {
+};
+var Gt = class extends CustomType {
+};
+
 // build/dev/javascript/gleam_stdlib/gleam/option.mjs
 var Some = class extends CustomType {
   constructor(x0) {
@@ -299,43 +322,219 @@ function to_result(option, e) {
     return new Error(e);
   }
 }
-
-// build/dev/javascript/gleam_stdlib/gleam/float.mjs
-function negate(x) {
-  return -1 * x;
-}
-function round2(x) {
-  let $ = x >= 0;
-  if ($) {
-    return round(x);
+function map(option, fun) {
+  if (option instanceof Some) {
+    let x = option[0];
+    return new Some(fun(x));
   } else {
-    return 0 - round(negate(x));
+    return new None();
   }
 }
-function divide(a2, b) {
-  if (b === 0) {
-    return new Error(void 0);
+function flatten(option) {
+  if (option instanceof Some) {
+    let x = option[0];
+    return x;
   } else {
-    let b$1 = b;
-    return new Ok(divideFloat(a2, b$1));
+    return new None();
   }
 }
 
-// build/dev/javascript/gleam_stdlib/gleam/int.mjs
-function min(a2, b) {
-  let $ = a2 < b;
-  if ($) {
-    return a2;
-  } else {
-    return b;
+// build/dev/javascript/gleam_stdlib/gleam/dict.mjs
+function insert(dict2, key, value2) {
+  return map_insert(key, value2, dict2);
+}
+function reverse_and_concat(loop$remaining, loop$accumulator) {
+  while (true) {
+    let remaining = loop$remaining;
+    let accumulator = loop$accumulator;
+    if (remaining.hasLength(0)) {
+      return accumulator;
+    } else {
+      let first4 = remaining.head;
+      let rest = remaining.tail;
+      loop$remaining = rest;
+      loop$accumulator = prepend(first4, accumulator);
+    }
   }
 }
-function max(a2, b) {
-  let $ = a2 > b;
-  if ($) {
-    return a2;
-  } else {
-    return b;
+function do_keys_loop(loop$list, loop$acc) {
+  while (true) {
+    let list3 = loop$list;
+    let acc = loop$acc;
+    if (list3.hasLength(0)) {
+      return reverse_and_concat(acc, toList([]));
+    } else {
+      let key = list3.head[0];
+      let rest = list3.tail;
+      loop$list = rest;
+      loop$acc = prepend(key, acc);
+    }
+  }
+}
+function keys(dict2) {
+  return do_keys_loop(map_to_list(dict2), toList([]));
+}
+
+// build/dev/javascript/gleam_stdlib/gleam/list.mjs
+function reverse_and_prepend(loop$prefix, loop$suffix) {
+  while (true) {
+    let prefix = loop$prefix;
+    let suffix = loop$suffix;
+    if (prefix.hasLength(0)) {
+      return suffix;
+    } else {
+      let first$1 = prefix.head;
+      let rest$1 = prefix.tail;
+      loop$prefix = rest$1;
+      loop$suffix = prepend(first$1, suffix);
+    }
+  }
+}
+function reverse(list3) {
+  return reverse_and_prepend(list3, toList([]));
+}
+function contains(loop$list, loop$elem) {
+  while (true) {
+    let list3 = loop$list;
+    let elem = loop$elem;
+    if (list3.hasLength(0)) {
+      return false;
+    } else if (list3.atLeastLength(1) && isEqual(list3.head, elem)) {
+      let first$1 = list3.head;
+      return true;
+    } else {
+      let rest$1 = list3.tail;
+      loop$list = rest$1;
+      loop$elem = elem;
+    }
+  }
+}
+function filter_loop(loop$list, loop$fun, loop$acc) {
+  while (true) {
+    let list3 = loop$list;
+    let fun = loop$fun;
+    let acc = loop$acc;
+    if (list3.hasLength(0)) {
+      return reverse(acc);
+    } else {
+      let first$1 = list3.head;
+      let rest$1 = list3.tail;
+      let new_acc = (() => {
+        let $ = fun(first$1);
+        if ($) {
+          return prepend(first$1, acc);
+        } else {
+          return acc;
+        }
+      })();
+      loop$list = rest$1;
+      loop$fun = fun;
+      loop$acc = new_acc;
+    }
+  }
+}
+function filter(list3, predicate) {
+  return filter_loop(list3, predicate, toList([]));
+}
+function map_loop(loop$list, loop$fun, loop$acc) {
+  while (true) {
+    let list3 = loop$list;
+    let fun = loop$fun;
+    let acc = loop$acc;
+    if (list3.hasLength(0)) {
+      return reverse(acc);
+    } else {
+      let first$1 = list3.head;
+      let rest$1 = list3.tail;
+      loop$list = rest$1;
+      loop$fun = fun;
+      loop$acc = prepend(fun(first$1), acc);
+    }
+  }
+}
+function map2(list3, fun) {
+  return map_loop(list3, fun, toList([]));
+}
+function try_map_loop(loop$list, loop$fun, loop$acc) {
+  while (true) {
+    let list3 = loop$list;
+    let fun = loop$fun;
+    let acc = loop$acc;
+    if (list3.hasLength(0)) {
+      return new Ok(reverse(acc));
+    } else {
+      let first$1 = list3.head;
+      let rest$1 = list3.tail;
+      let $ = fun(first$1);
+      if ($.isOk()) {
+        let first$2 = $[0];
+        loop$list = rest$1;
+        loop$fun = fun;
+        loop$acc = prepend(first$2, acc);
+      } else {
+        let error = $[0];
+        return new Error(error);
+      }
+    }
+  }
+}
+function try_map(list3, fun) {
+  return try_map_loop(list3, fun, toList([]));
+}
+function fold(loop$list, loop$initial, loop$fun) {
+  while (true) {
+    let list3 = loop$list;
+    let initial = loop$initial;
+    let fun = loop$fun;
+    if (list3.hasLength(0)) {
+      return initial;
+    } else {
+      let first$1 = list3.head;
+      let rest$1 = list3.tail;
+      loop$list = rest$1;
+      loop$initial = fun(initial, first$1);
+      loop$fun = fun;
+    }
+  }
+}
+function index_fold_loop(loop$over, loop$acc, loop$with, loop$index) {
+  while (true) {
+    let over = loop$over;
+    let acc = loop$acc;
+    let with$ = loop$with;
+    let index3 = loop$index;
+    if (over.hasLength(0)) {
+      return acc;
+    } else {
+      let first$1 = over.head;
+      let rest$1 = over.tail;
+      loop$over = rest$1;
+      loop$acc = with$(acc, first$1, index3);
+      loop$with = with$;
+      loop$index = index3 + 1;
+    }
+  }
+}
+function index_fold(list3, initial, fun) {
+  return index_fold_loop(list3, initial, fun, 0);
+}
+function any(loop$list, loop$predicate) {
+  while (true) {
+    let list3 = loop$list;
+    let predicate = loop$predicate;
+    if (list3.hasLength(0)) {
+      return false;
+    } else {
+      let first$1 = list3.head;
+      let rest$1 = list3.tail;
+      let $ = predicate(first$1);
+      if ($) {
+        return true;
+      } else {
+        loop$list = rest$1;
+        loop$predicate = predicate;
+      }
+    }
   }
 }
 
@@ -346,10 +545,86 @@ function replace(string4, pattern, substitute) {
   let _pipe$2 = string_replace(_pipe$1, pattern, substitute);
   return identity(_pipe$2);
 }
+function slice(string4, idx, len) {
+  let $ = len < 0;
+  if ($) {
+    return "";
+  } else {
+    let $1 = idx < 0;
+    if ($1) {
+      let translated_idx = string_length(string4) + idx;
+      let $2 = translated_idx < 0;
+      if ($2) {
+        return "";
+      } else {
+        return string_slice(string4, translated_idx, len);
+      }
+    } else {
+      return string_slice(string4, idx, len);
+    }
+  }
+}
+function drop_end(string4, num_graphemes) {
+  let $ = num_graphemes < 0;
+  if ($) {
+    return string4;
+  } else {
+    return slice(string4, 0, string_length(string4) - num_graphemes);
+  }
+}
 function concat2(strings) {
   let _pipe = strings;
   let _pipe$1 = concat(_pipe);
   return identity(_pipe$1);
+}
+function repeat_loop(loop$string, loop$times, loop$acc) {
+  while (true) {
+    let string4 = loop$string;
+    let times = loop$times;
+    let acc = loop$acc;
+    let $ = times <= 0;
+    if ($) {
+      return acc;
+    } else {
+      loop$string = string4;
+      loop$times = times - 1;
+      loop$acc = acc + string4;
+    }
+  }
+}
+function repeat(string4, times) {
+  return repeat_loop(string4, times, "");
+}
+function padding(size, pad_string) {
+  let pad_string_length = string_length(pad_string);
+  let num_pads = divideInt(size, pad_string_length);
+  let extra = remainderInt(size, pad_string_length);
+  return repeat(pad_string, num_pads) + slice(pad_string, 0, extra);
+}
+function pad_start(string4, desired_length, pad_string) {
+  let current_length = string_length(string4);
+  let to_pad_length = desired_length - current_length;
+  let $ = to_pad_length <= 0;
+  if ($) {
+    return string4;
+  } else {
+    return padding(to_pad_length, pad_string) + string4;
+  }
+}
+function pad_end(string4, desired_length, pad_string) {
+  let current_length = string_length(string4);
+  let to_pad_length = desired_length - current_length;
+  let $ = to_pad_length <= 0;
+  if ($) {
+    return string4;
+  } else {
+    return string4 + padding(to_pad_length, pad_string);
+  }
+}
+function trim(string4) {
+  let _pipe = string4;
+  let _pipe$1 = trim_start(_pipe);
+  return trim_end(_pipe$1);
 }
 function drop_start(loop$string, loop$num_graphemes) {
   while (true) {
@@ -370,9 +645,37 @@ function drop_start(loop$string, loop$num_graphemes) {
     }
   }
 }
+function split2(x, substring) {
+  if (substring === "") {
+    return graphemes(x);
+  } else {
+    let _pipe = x;
+    let _pipe$1 = identity(_pipe);
+    let _pipe$2 = split(_pipe$1, substring);
+    return map2(_pipe$2, identity);
+  }
+}
+function do_to_utf_codepoints(string4) {
+  let _pipe = string4;
+  let _pipe$1 = string_to_codepoint_integer_list(_pipe);
+  return map2(_pipe$1, codepoint);
+}
+function to_utf_codepoints(string4) {
+  return do_to_utf_codepoints(string4);
+}
+function first(string4) {
+  let $ = pop_grapheme(string4);
+  if ($.isOk()) {
+    let first$1 = $[0][0];
+    return new Ok(first$1);
+  } else {
+    let e = $[0];
+    return new Error(e);
+  }
+}
 
 // build/dev/javascript/gleam_stdlib/gleam/result.mjs
-function map2(result, fun) {
+function map3(result, fun) {
   if (result.isOk()) {
     let x = result[0];
     return new Ok(fun(x));
@@ -402,6 +705,14 @@ function try$(result, fun) {
 function then$(result, fun) {
   return try$(result, fun);
 }
+function unwrap(result, default$2) {
+  if (result.isOk()) {
+    let v = result[0];
+    return v;
+  } else {
+    return default$2;
+  }
+}
 
 // build/dev/javascript/gleam_stdlib/gleam/dynamic.mjs
 var DecodeError = class extends CustomType {
@@ -416,7 +727,7 @@ function map_errors(result, f) {
   return map_error(
     result,
     (_capture) => {
-      return map(_capture, f);
+      return map2(_capture, f);
     }
   );
 }
@@ -448,7 +759,7 @@ function push_path(error, name) {
     toList([
       decode_string,
       (x) => {
-        return map2(decode_int(x), to_string);
+        return map3(decode_int(x), to_string);
       }
     ])
   );
@@ -1202,6 +1513,13 @@ var NOT_FOUND = {};
 function identity(x) {
   return x;
 }
+function parse_int(value2) {
+  if (/^[-+]?(\d+)$/.test(value2)) {
+    return new Ok(parseInt(value2));
+  } else {
+    return new Error(Nil);
+  }
+}
 function to_string(term) {
   return term.toString();
 }
@@ -1228,6 +1546,29 @@ function string_replace(string4, target, substitute) {
     substitute
   );
 }
+function string_length(string4) {
+  if (string4 === "") {
+    return 0;
+  }
+  const iterator = graphemes_iterator(string4);
+  if (iterator) {
+    let i = 0;
+    for (const _ of iterator) {
+      i++;
+    }
+    return i;
+  } else {
+    return string4.match(/./gsu).length;
+  }
+}
+function graphemes(string4) {
+  const iterator = graphemes_iterator(string4);
+  if (iterator) {
+    return List.fromArray(Array.from(iterator).map((item) => item.segment));
+  } else {
+    return List.fromArray(string4.match(/./gsu));
+  }
+}
 var segmenter = void 0;
 function graphemes_iterator(string4) {
   if (globalThis.Intl && Intl.Segmenter) {
@@ -1236,18 +1577,31 @@ function graphemes_iterator(string4) {
   }
 }
 function pop_grapheme(string4) {
-  let first3;
+  let first4;
   const iterator = graphemes_iterator(string4);
   if (iterator) {
-    first3 = iterator.next().value?.segment;
+    first4 = iterator.next().value?.segment;
   } else {
-    first3 = string4.match(/./su)?.[0];
+    first4 = string4.match(/./su)?.[0];
   }
-  if (first3) {
-    return new Ok([first3, string4.slice(first3.length)]);
+  if (first4) {
+    return new Ok([first4, string4.slice(first4.length)]);
   } else {
     return new Error(Nil);
   }
+}
+function split(xs, pattern) {
+  return List.fromArray(xs.split(pattern));
+}
+function join(xs, separator) {
+  const iterator = xs[Symbol.iterator]();
+  let result = iterator.next().value || "";
+  let current = iterator.next();
+  while (!current.done) {
+    result = result + separator + current.value;
+    current = iterator.next();
+  }
+  return result;
 }
 function concat(xs) {
   let result = "";
@@ -1255,6 +1609,34 @@ function concat(xs) {
     result = result + x;
   }
   return result;
+}
+function string_slice(string4, idx, len) {
+  if (len <= 0 || idx >= string4.length) {
+    return "";
+  }
+  const iterator = graphemes_iterator(string4);
+  if (iterator) {
+    while (idx-- > 0) {
+      iterator.next();
+    }
+    let result = "";
+    while (len-- > 0) {
+      const v = iterator.next().value;
+      if (v === void 0) {
+        break;
+      }
+      result += v.segment;
+    }
+    return result;
+  } else {
+    return string4.match(/./gsu).slice(idx, idx + len).join("");
+  }
+}
+function contains_string(haystack, needle) {
+  return haystack.indexOf(needle) >= 0;
+}
+function ends_with(haystack, needle) {
+  return haystack.endsWith(needle);
 }
 var unicode_whitespaces = [
   " ",
@@ -1278,8 +1660,23 @@ var unicode_whitespaces = [
 ].join("");
 var trim_start_regex = new RegExp(`^[${unicode_whitespaces}]*`);
 var trim_end_regex = new RegExp(`[${unicode_whitespaces}]*$`);
-function round(float4) {
+function trim_start(string4) {
+  return string4.replace(trim_start_regex, "");
+}
+function trim_end(string4) {
+  return string4.replace(trim_end_regex, "");
+}
+function round2(float4) {
   return Math.round(float4);
+}
+function codepoint(int3) {
+  return new UtfCodepoint(int3);
+}
+function string_to_codepoint_integer_list(string4) {
+  return List.fromArray(Array.from(string4).map((item) => item.codePointAt(0)));
+}
+function utf_codepoint_to_int(utf_codepoint) {
+  return utf_codepoint.value;
 }
 function new_map() {
   return Dict.new();
@@ -1360,142 +1757,51 @@ function try_get_field(value2, field2, or_else) {
   }
 }
 
-// build/dev/javascript/gleam_stdlib/gleam/dict.mjs
-function insert(dict2, key, value2) {
-  return map_insert(key, value2, dict2);
+// build/dev/javascript/gleam_stdlib/gleam/float.mjs
+function negate(x) {
+  return -1 * x;
 }
-function reverse_and_concat(loop$remaining, loop$accumulator) {
-  while (true) {
-    let remaining = loop$remaining;
-    let accumulator = loop$accumulator;
-    if (remaining.hasLength(0)) {
-      return accumulator;
-    } else {
-      let first3 = remaining.head;
-      let rest = remaining.tail;
-      loop$remaining = rest;
-      loop$accumulator = prepend(first3, accumulator);
-    }
+function round(x) {
+  let $ = x >= 0;
+  if ($) {
+    return round2(x);
+  } else {
+    return 0 - round2(negate(x));
   }
 }
-function do_keys_loop(loop$list, loop$acc) {
-  while (true) {
-    let list2 = loop$list;
-    let acc = loop$acc;
-    if (list2.hasLength(0)) {
-      return reverse_and_concat(acc, toList([]));
-    } else {
-      let key = list2.head[0];
-      let rest = list2.tail;
-      loop$list = rest;
-      loop$acc = prepend(key, acc);
-    }
+function divide(a2, b) {
+  if (b === 0) {
+    return new Error(void 0);
+  } else {
+    let b$1 = b;
+    return new Ok(divideFloat(a2, b$1));
   }
-}
-function keys(dict2) {
-  return do_keys_loop(map_to_list(dict2), toList([]));
 }
 
-// build/dev/javascript/gleam_stdlib/gleam/list.mjs
-function reverse_and_prepend(loop$prefix, loop$suffix) {
-  while (true) {
-    let prefix = loop$prefix;
-    let suffix = loop$suffix;
-    if (prefix.hasLength(0)) {
-      return suffix;
-    } else {
-      let first$1 = prefix.head;
-      let rest$1 = prefix.tail;
-      loop$prefix = rest$1;
-      loop$suffix = prepend(first$1, suffix);
-    }
+// build/dev/javascript/gleam_stdlib/gleam/int.mjs
+function absolute_value(x) {
+  let $ = x >= 0;
+  if ($) {
+    return x;
+  } else {
+    return x * -1;
   }
 }
-function reverse(list2) {
-  return reverse_and_prepend(list2, toList([]));
-}
-function filter_loop(loop$list, loop$fun, loop$acc) {
-  while (true) {
-    let list2 = loop$list;
-    let fun = loop$fun;
-    let acc = loop$acc;
-    if (list2.hasLength(0)) {
-      return reverse(acc);
-    } else {
-      let first$1 = list2.head;
-      let rest$1 = list2.tail;
-      let new_acc = (() => {
-        let $ = fun(first$1);
-        if ($) {
-          return prepend(first$1, acc);
-        } else {
-          return acc;
-        }
-      })();
-      loop$list = rest$1;
-      loop$fun = fun;
-      loop$acc = new_acc;
-    }
+function min(a2, b) {
+  let $ = a2 < b;
+  if ($) {
+    return a2;
+  } else {
+    return b;
   }
 }
-function filter(list2, predicate) {
-  return filter_loop(list2, predicate, toList([]));
-}
-function map_loop(loop$list, loop$fun, loop$acc) {
-  while (true) {
-    let list2 = loop$list;
-    let fun = loop$fun;
-    let acc = loop$acc;
-    if (list2.hasLength(0)) {
-      return reverse(acc);
-    } else {
-      let first$1 = list2.head;
-      let rest$1 = list2.tail;
-      loop$list = rest$1;
-      loop$fun = fun;
-      loop$acc = prepend(fun(first$1), acc);
-    }
+function max(a2, b) {
+  let $ = a2 > b;
+  if ($) {
+    return a2;
+  } else {
+    return b;
   }
-}
-function map(list2, fun) {
-  return map_loop(list2, fun, toList([]));
-}
-function fold(loop$list, loop$initial, loop$fun) {
-  while (true) {
-    let list2 = loop$list;
-    let initial = loop$initial;
-    let fun = loop$fun;
-    if (list2.hasLength(0)) {
-      return initial;
-    } else {
-      let first$1 = list2.head;
-      let rest$1 = list2.tail;
-      loop$list = rest$1;
-      loop$initial = fun(initial, first$1);
-      loop$fun = fun;
-    }
-  }
-}
-function index_fold_loop(loop$over, loop$acc, loop$with, loop$index) {
-  while (true) {
-    let over = loop$over;
-    let acc = loop$acc;
-    let with$ = loop$with;
-    let index3 = loop$index;
-    if (over.hasLength(0)) {
-      return acc;
-    } else {
-      let first$1 = over.head;
-      let rest$1 = over.tail;
-      loop$over = rest$1;
-      loop$acc = with$(acc, first$1, index3);
-      loop$with = with$;
-      loop$index = index3 + 1;
-    }
-  }
-}
-function index_fold(list2, initial, fun) {
-  return index_fold_loop(list2, initial, fun, 0);
 }
 
 // build/dev/javascript/gleam_stdlib/gleam/bool.mjs
@@ -1641,6 +1947,9 @@ function class$(name) {
 }
 function role(name) {
   return attribute("role", name);
+}
+function type_(name) {
+  return attribute("type", name);
 }
 
 // build/dev/javascript/lustre/lustre/element.mjs
@@ -2433,7 +2742,7 @@ function on_input(msg) {
     "input",
     (event2) => {
       let _pipe = value(event2);
-      return map2(_pipe, msg);
+      return map3(_pipe, msg);
     }
   );
 }
@@ -2925,15 +3234,15 @@ function to_css_rgb(colour) {
   let g = $[1];
   let b = $[2];
   let r$1 = (() => {
-    let _pipe = round2(r * 255);
+    let _pipe = round(r * 255);
     return to_string(_pipe);
   })();
   let g$1 = (() => {
-    let _pipe = round2(g * 255);
+    let _pipe = round(g * 255);
     return to_string(_pipe);
   })();
   let b$1 = (() => {
-    let _pipe = round2(b * 255);
+    let _pipe = round(b * 255);
     return to_string(_pipe);
   })();
   return r$1 + " " + g$1 + " " + b$1;
@@ -3278,7 +3587,7 @@ function content(attributes, children2) {
     children2
   );
 }
-function padding(x, y) {
+function padding2(x, y) {
   return style(toList([["--padding-x", x], ["--padding-y", y]]));
 }
 function radius2(value2) {
@@ -3295,26 +3604,1430 @@ function input2(attributes) {
   );
 }
 
+// build/dev/javascript/gleam_regexp/gleam_regexp_ffi.mjs
+function compile(pattern, options) {
+  try {
+    let flags = "gu";
+    if (options.case_insensitive)
+      flags += "i";
+    if (options.multi_line)
+      flags += "m";
+    return new Ok(new RegExp(pattern, flags));
+  } catch (error) {
+    const number = (error.columnNumber || 0) | 0;
+    return new Error(new CompileError(error.message, number));
+  }
+}
+function split3(regex, string4) {
+  return List.fromArray(
+    string4.split(regex).map((item) => item === void 0 ? "" : item)
+  );
+}
+function scan(regex, string4) {
+  const matches = Array.from(string4.matchAll(regex)).map((match) => {
+    const content2 = match[0];
+    return new Match(content2, submatches(match.slice(1)));
+  });
+  return List.fromArray(matches);
+}
+function submatches(groups) {
+  const submatches2 = [];
+  for (let n = groups.length - 1; n >= 0; n--) {
+    if (groups[n]) {
+      submatches2[n] = new Some(groups[n]);
+      continue;
+    }
+    if (submatches2.length > 0) {
+      submatches2[n] = new None();
+    }
+  }
+  return List.fromArray(submatches2);
+}
+
+// build/dev/javascript/gleam_regexp/gleam/regexp.mjs
+var Match = class extends CustomType {
+  constructor(content2, submatches2) {
+    super();
+    this.content = content2;
+    this.submatches = submatches2;
+  }
+};
+var CompileError = class extends CustomType {
+  constructor(error, byte_index) {
+    super();
+    this.error = error;
+    this.byte_index = byte_index;
+  }
+};
+var Options = class extends CustomType {
+  constructor(case_insensitive, multi_line) {
+    super();
+    this.case_insensitive = case_insensitive;
+    this.multi_line = multi_line;
+  }
+};
+function compile2(pattern, options) {
+  return compile(pattern, options);
+}
+function from_string(pattern) {
+  return compile2(pattern, new Options(false, false));
+}
+function split4(regexp, string4) {
+  return split3(regexp, string4);
+}
+function scan2(regexp, string4) {
+  return scan(regexp, string4);
+}
+
+// build/dev/javascript/gleam_stdlib/gleam/function.mjs
+function identity3(x) {
+  return x;
+}
+
+// build/dev/javascript/birl/birl/duration.mjs
+var Duration = class extends CustomType {
+  constructor(x0) {
+    super();
+    this[0] = x0;
+  }
+};
+var MicroSecond = class extends CustomType {
+};
+var MilliSecond = class extends CustomType {
+};
+var Second = class extends CustomType {
+};
+var Minute = class extends CustomType {
+};
+var Hour = class extends CustomType {
+};
+var Day = class extends CustomType {
+};
+var Week = class extends CustomType {
+};
+var Month = class extends CustomType {
+};
+var Year = class extends CustomType {
+};
+function extract(duration, unit_value) {
+  return [divideInt(duration, unit_value), remainderInt(duration, unit_value)];
+}
+var milli_second = 1e3;
+var second = 1e6;
+var minute = 6e7;
+var hour = 36e8;
+var day = 864e8;
+function days(value2) {
+  return new Duration(value2 * day);
+}
+var week = 6048e8;
+var month = 2592e9;
+var year = 31536e9;
+function new$3(values2) {
+  let _pipe = values2;
+  let _pipe$1 = fold(
+    _pipe,
+    0,
+    (total, current) => {
+      if (current[1] instanceof MicroSecond) {
+        let amount = current[0];
+        return total + amount;
+      } else if (current[1] instanceof MilliSecond) {
+        let amount = current[0];
+        return total + amount * milli_second;
+      } else if (current[1] instanceof Second) {
+        let amount = current[0];
+        return total + amount * second;
+      } else if (current[1] instanceof Minute) {
+        let amount = current[0];
+        return total + amount * minute;
+      } else if (current[1] instanceof Hour) {
+        let amount = current[0];
+        return total + amount * hour;
+      } else if (current[1] instanceof Day) {
+        let amount = current[0];
+        return total + amount * day;
+      } else if (current[1] instanceof Week) {
+        let amount = current[0];
+        return total + amount * week;
+      } else if (current[1] instanceof Month) {
+        let amount = current[0];
+        return total + amount * month;
+      } else {
+        let amount = current[0];
+        return total + amount * year;
+      }
+    }
+  );
+  return new Duration(_pipe$1);
+}
+function decompose(duration) {
+  let value2 = duration[0];
+  let absolute_value2 = absolute_value(value2);
+  let $ = extract(absolute_value2, year);
+  let years$1 = $[0];
+  let remaining = $[1];
+  let $1 = extract(remaining, month);
+  let months$1 = $1[0];
+  let remaining$1 = $1[1];
+  let $2 = extract(remaining$1, week);
+  let weeks$1 = $2[0];
+  let remaining$2 = $2[1];
+  let $3 = extract(remaining$2, day);
+  let days$1 = $3[0];
+  let remaining$3 = $3[1];
+  let $4 = extract(remaining$3, hour);
+  let hours$1 = $4[0];
+  let remaining$4 = $4[1];
+  let $5 = extract(remaining$4, minute);
+  let minutes$1 = $5[0];
+  let remaining$5 = $5[1];
+  let $6 = extract(remaining$5, second);
+  let seconds$1 = $6[0];
+  let remaining$6 = $6[1];
+  let $7 = extract(remaining$6, milli_second);
+  let milli_seconds$1 = $7[0];
+  let remaining$7 = $7[1];
+  let _pipe = toList([
+    [years$1, new Year()],
+    [months$1, new Month()],
+    [weeks$1, new Week()],
+    [days$1, new Day()],
+    [hours$1, new Hour()],
+    [minutes$1, new Minute()],
+    [seconds$1, new Second()],
+    [milli_seconds$1, new MilliSecond()],
+    [remaining$7, new MicroSecond()]
+  ]);
+  let _pipe$1 = filter(_pipe, (item) => {
+    return item[0] > 0;
+  });
+  return map2(
+    _pipe$1,
+    (item) => {
+      let $8 = value2 < 0;
+      if ($8) {
+        return [-1 * item[0], item[1]];
+      } else {
+        return item;
+      }
+    }
+  );
+}
+
+// build/dev/javascript/birl/birl/zones.mjs
+var list2 = /* @__PURE__ */ toList([
+  ["Africa/Abidjan", 0],
+  ["Africa/Algiers", 3600],
+  ["Africa/Bissau", 0],
+  ["Africa/Cairo", 7200],
+  ["Africa/Casablanca", 3600],
+  ["Africa/Ceuta", 3600],
+  ["Africa/El_Aaiun", 3600],
+  ["Africa/Johannesburg", 7200],
+  ["Africa/Juba", 7200],
+  ["Africa/Khartoum", 7200],
+  ["Africa/Lagos", 3600],
+  ["Africa/Maputo", 7200],
+  ["Africa/Monrovia", 0],
+  ["Africa/Nairobi", 10800],
+  ["Africa/Ndjamena", 3600],
+  ["Africa/Sao_Tome", 0],
+  ["Africa/Tripoli", 7200],
+  ["Africa/Tunis", 3600],
+  ["Africa/Windhoek", 7200],
+  ["America/Adak", -36e3],
+  ["America/Anchorage", -32400],
+  ["America/Araguaina", -10800],
+  ["America/Argentina/Buenos_Aires", -10800],
+  ["America/Argentina/Catamarca", -10800],
+  ["America/Argentina/Cordoba", -10800],
+  ["America/Argentina/Jujuy", -10800],
+  ["America/Argentina/La_Rioja", -10800],
+  ["America/Argentina/Mendoza", -10800],
+  ["America/Argentina/Rio_Gallegos", -10800],
+  ["America/Argentina/Salta", -10800],
+  ["America/Argentina/San_Juan", -10800],
+  ["America/Argentina/San_Luis", -10800],
+  ["America/Argentina/Tucuman", -10800],
+  ["America/Argentina/Ushuaia", -10800],
+  ["America/Asuncion", -14400],
+  ["America/Bahia", -10800],
+  ["America/Bahia_Banderas", -21600],
+  ["America/Barbados", -14400],
+  ["America/Belem", -10800],
+  ["America/Belize", -21600],
+  ["America/Boa_Vista", -14400],
+  ["America/Bogota", -18e3],
+  ["America/Boise", -25200],
+  ["America/Cambridge_Bay", -25200],
+  ["America/Campo_Grande", -14400],
+  ["America/Cancun", -18e3],
+  ["America/Caracas", -14400],
+  ["America/Cayenne", -10800],
+  ["America/Chicago", -21600],
+  ["America/Chihuahua", -21600],
+  ["America/Ciudad_Juarez", -25200],
+  ["America/Costa_Rica", -21600],
+  ["America/Cuiaba", -14400],
+  ["America/Danmarkshavn", 0],
+  ["America/Dawson", -25200],
+  ["America/Dawson_Creek", -25200],
+  ["America/Denver", -25200],
+  ["America/Detroit", -18e3],
+  ["America/Edmonton", -25200],
+  ["America/Eirunepe", -18e3],
+  ["America/El_Salvador", -21600],
+  ["America/Fort_Nelson", -25200],
+  ["America/Fortaleza", -10800],
+  ["America/Glace_Bay", -14400],
+  ["America/Goose_Bay", -14400],
+  ["America/Grand_Turk", -18e3],
+  ["America/Guatemala", -21600],
+  ["America/Guayaquil", -18e3],
+  ["America/Guyana", -14400],
+  ["America/Halifax", -14400],
+  ["America/Havana", -18e3],
+  ["America/Hermosillo", -25200],
+  ["America/Indiana/Indianapolis", -18e3],
+  ["America/Indiana/Knox", -21600],
+  ["America/Indiana/Marengo", -18e3],
+  ["America/Indiana/Petersburg", -18e3],
+  ["America/Indiana/Tell_City", -21600],
+  ["America/Indiana/Vevay", -18e3],
+  ["America/Indiana/Vincennes", -18e3],
+  ["America/Indiana/Winamac", -18e3],
+  ["America/Inuvik", -25200],
+  ["America/Iqaluit", -18e3],
+  ["America/Jamaica", -18e3],
+  ["America/Juneau", -32400],
+  ["America/Kentucky/Louisville", -18e3],
+  ["America/Kentucky/Monticello", -18e3],
+  ["America/La_Paz", -14400],
+  ["America/Lima", -18e3],
+  ["America/Los_Angeles", -28800],
+  ["America/Maceio", -10800],
+  ["America/Managua", -21600],
+  ["America/Manaus", -14400],
+  ["America/Martinique", -14400],
+  ["America/Matamoros", -21600],
+  ["America/Mazatlan", -25200],
+  ["America/Menominee", -21600],
+  ["America/Merida", -21600],
+  ["America/Metlakatla", -32400],
+  ["America/Mexico_City", -21600],
+  ["America/Miquelon", -10800],
+  ["America/Moncton", -14400],
+  ["America/Monterrey", -21600],
+  ["America/Montevideo", -10800],
+  ["America/New_York", -18e3],
+  ["America/Nome", -32400],
+  ["America/Noronha", -7200],
+  ["America/North_Dakota/Beulah", -21600],
+  ["America/North_Dakota/Center", -21600],
+  ["America/North_Dakota/New_Salem", -21600],
+  ["America/Nuuk", -7200],
+  ["America/Ojinaga", -21600],
+  ["America/Panama", -18e3],
+  ["America/Paramaribo", -10800],
+  ["America/Phoenix", -25200],
+  ["America/Port-au-Prince", -18e3],
+  ["America/Porto_Velho", -14400],
+  ["America/Puerto_Rico", -14400],
+  ["America/Punta_Arenas", -10800],
+  ["America/Rankin_Inlet", -21600],
+  ["America/Recife", -10800],
+  ["America/Regina", -21600],
+  ["America/Resolute", -21600],
+  ["America/Rio_Branco", -18e3],
+  ["America/Santarem", -10800],
+  ["America/Santiago", -14400],
+  ["America/Santo_Domingo", -14400],
+  ["America/Sao_Paulo", -10800],
+  ["America/Scoresbysund", -7200],
+  ["America/Sitka", -32400],
+  ["America/St_Johns", -12600],
+  ["America/Swift_Current", -21600],
+  ["America/Tegucigalpa", -21600],
+  ["America/Thule", -14400],
+  ["America/Tijuana", -28800],
+  ["America/Toronto", -18e3],
+  ["America/Vancouver", -28800],
+  ["America/Whitehorse", -25200],
+  ["America/Winnipeg", -21600],
+  ["America/Yakutat", -32400],
+  ["Antarctica/Casey", 28800],
+  ["Antarctica/Davis", 25200],
+  ["Antarctica/Macquarie", 36e3],
+  ["Antarctica/Mawson", 18e3],
+  ["Antarctica/Palmer", -10800],
+  ["Antarctica/Rothera", -10800],
+  ["Antarctica/Troll", 0],
+  ["Antarctica/Vostok", 18e3],
+  ["Asia/Almaty", 18e3],
+  ["Asia/Amman", 10800],
+  ["Asia/Anadyr", 43200],
+  ["Asia/Aqtau", 18e3],
+  ["Asia/Aqtobe", 18e3],
+  ["Asia/Ashgabat", 18e3],
+  ["Asia/Atyrau", 18e3],
+  ["Asia/Baghdad", 10800],
+  ["Asia/Baku", 14400],
+  ["Asia/Bangkok", 25200],
+  ["Asia/Barnaul", 25200],
+  ["Asia/Beirut", 7200],
+  ["Asia/Bishkek", 21600],
+  ["Asia/Chita", 32400],
+  ["Asia/Colombo", 19800],
+  ["Asia/Damascus", 10800],
+  ["Asia/Dhaka", 21600],
+  ["Asia/Dili", 32400],
+  ["Asia/Dubai", 14400],
+  ["Asia/Dushanbe", 18e3],
+  ["Asia/Famagusta", 7200],
+  ["Asia/Gaza", 7200],
+  ["Asia/Hebron", 7200],
+  ["Asia/Ho_Chi_Minh", 25200],
+  ["Asia/Hong_Kong", 28800],
+  ["Asia/Hovd", 25200],
+  ["Asia/Irkutsk", 28800],
+  ["Asia/Jakarta", 25200],
+  ["Asia/Jayapura", 32400],
+  ["Asia/Jerusalem", 7200],
+  ["Asia/Kabul", 16200],
+  ["Asia/Kamchatka", 43200],
+  ["Asia/Karachi", 18e3],
+  ["Asia/Kathmandu", 20700],
+  ["Asia/Khandyga", 32400],
+  ["Asia/Kolkata", 19800],
+  ["Asia/Krasnoyarsk", 25200],
+  ["Asia/Kuching", 28800],
+  ["Asia/Macau", 28800],
+  ["Asia/Magadan", 39600],
+  ["Asia/Makassar", 28800],
+  ["Asia/Manila", 28800],
+  ["Asia/Nicosia", 7200],
+  ["Asia/Novokuznetsk", 25200],
+  ["Asia/Novosibirsk", 25200],
+  ["Asia/Omsk", 21600],
+  ["Asia/Oral", 18e3],
+  ["Asia/Pontianak", 25200],
+  ["Asia/Pyongyang", 32400],
+  ["Asia/Qatar", 10800],
+  ["Asia/Qostanay", 18e3],
+  ["Asia/Qyzylorda", 18e3],
+  ["Asia/Riyadh", 10800],
+  ["Asia/Sakhalin", 39600],
+  ["Asia/Samarkand", 18e3],
+  ["Asia/Seoul", 32400],
+  ["Asia/Shanghai", 28800],
+  ["Asia/Singapore", 28800],
+  ["Asia/Srednekolymsk", 39600],
+  ["Asia/Taipei", 28800],
+  ["Asia/Tashkent", 18e3],
+  ["Asia/Tbilisi", 14400],
+  ["Asia/Tehran", 12600],
+  ["Asia/Thimphu", 21600],
+  ["Asia/Tokyo", 32400],
+  ["Asia/Tomsk", 25200],
+  ["Asia/Ulaanbaatar", 28800],
+  ["Asia/Urumqi", 21600],
+  ["Asia/Ust-Nera", 36e3],
+  ["Asia/Vladivostok", 36e3],
+  ["Asia/Yakutsk", 32400],
+  ["Asia/Yangon", 23400],
+  ["Asia/Yekaterinburg", 18e3],
+  ["Asia/Yerevan", 14400],
+  ["Atlantic/Azores", -3600],
+  ["Atlantic/Bermuda", -14400],
+  ["Atlantic/Canary", 0],
+  ["Atlantic/Cape_Verde", -3600],
+  ["Atlantic/Faroe", 0],
+  ["Atlantic/Madeira", 0],
+  ["Atlantic/South_Georgia", -7200],
+  ["Atlantic/Stanley", -10800],
+  ["Australia/Adelaide", 34200],
+  ["Australia/Brisbane", 36e3],
+  ["Australia/Broken_Hill", 34200],
+  ["Australia/Darwin", 34200],
+  ["Australia/Eucla", 31500],
+  ["Australia/Hobart", 36e3],
+  ["Australia/Lindeman", 36e3],
+  ["Australia/Lord_Howe", 37800],
+  ["Australia/Melbourne", 36e3],
+  ["Australia/Perth", 28800],
+  ["Australia/Sydney", 36e3],
+  ["Etc/GMT", 0],
+  ["Etc/GMT+1", -3600],
+  ["Etc/GMT+10", -36e3],
+  ["Etc/GMT+11", -39600],
+  ["Etc/GMT+12", -43200],
+  ["Etc/GMT+2", -7200],
+  ["Etc/GMT+3", -10800],
+  ["Etc/GMT+4", -14400],
+  ["Etc/GMT+5", -18e3],
+  ["Etc/GMT+6", -21600],
+  ["Etc/GMT+7", -25200],
+  ["Etc/GMT+8", -28800],
+  ["Etc/GMT+9", -32400],
+  ["Etc/GMT-1", 3600],
+  ["Etc/GMT-10", 36e3],
+  ["Etc/GMT-11", 39600],
+  ["Etc/GMT-12", 43200],
+  ["Etc/GMT-13", 46800],
+  ["Etc/GMT-14", 50400],
+  ["Etc/GMT-2", 7200],
+  ["Etc/GMT-3", 10800],
+  ["Etc/GMT-4", 14400],
+  ["Etc/GMT-5", 18e3],
+  ["Etc/GMT-6", 21600],
+  ["Etc/GMT-7", 25200],
+  ["Etc/GMT-8", 28800],
+  ["Etc/GMT-9", 32400],
+  ["Etc/UTC", 0],
+  ["Europe/Andorra", 3600],
+  ["Europe/Astrakhan", 14400],
+  ["Europe/Athens", 7200],
+  ["Europe/Belgrade", 3600],
+  ["Europe/Berlin", 3600],
+  ["Europe/Brussels", 3600],
+  ["Europe/Bucharest", 7200],
+  ["Europe/Budapest", 3600],
+  ["Europe/Chisinau", 7200],
+  ["Europe/Dublin", 3600],
+  ["Europe/Gibraltar", 3600],
+  ["Europe/Helsinki", 7200],
+  ["Europe/Istanbul", 10800],
+  ["Europe/Kaliningrad", 7200],
+  ["Europe/Kirov", 10800],
+  ["Europe/Kyiv", 7200],
+  ["Europe/Lisbon", 0],
+  ["Europe/London", 0],
+  ["Europe/Madrid", 3600],
+  ["Europe/Malta", 3600],
+  ["Europe/Minsk", 10800],
+  ["Europe/Moscow", 10800],
+  ["Europe/Paris", 3600],
+  ["Europe/Prague", 3600],
+  ["Europe/Riga", 7200],
+  ["Europe/Rome", 3600],
+  ["Europe/Samara", 14400],
+  ["Europe/Saratov", 14400],
+  ["Europe/Simferopol", 10800],
+  ["Europe/Sofia", 7200],
+  ["Europe/Tallinn", 7200],
+  ["Europe/Tirane", 3600],
+  ["Europe/Ulyanovsk", 14400],
+  ["Europe/Vienna", 3600],
+  ["Europe/Vilnius", 7200],
+  ["Europe/Volgograd", 10800],
+  ["Europe/Warsaw", 3600],
+  ["Europe/Zurich", 3600],
+  ["Indian/Chagos", 21600],
+  ["Indian/Maldives", 18e3],
+  ["Indian/Mauritius", 14400],
+  ["Pacific/Apia", 46800],
+  ["Pacific/Auckland", 43200],
+  ["Pacific/Bougainville", 39600],
+  ["Pacific/Chatham", 45900],
+  ["Pacific/Easter", -21600],
+  ["Pacific/Efate", 39600],
+  ["Pacific/Fakaofo", 46800],
+  ["Pacific/Fiji", 43200],
+  ["Pacific/Galapagos", -21600],
+  ["Pacific/Gambier", -32400],
+  ["Pacific/Guadalcanal", 39600],
+  ["Pacific/Guam", 36e3],
+  ["Pacific/Honolulu", -36e3],
+  ["Pacific/Kanton", 46800],
+  ["Pacific/Kiritimati", 50400],
+  ["Pacific/Kosrae", 39600],
+  ["Pacific/Kwajalein", 43200],
+  ["Pacific/Marquesas", -34200],
+  ["Pacific/Nauru", 43200],
+  ["Pacific/Niue", -39600],
+  ["Pacific/Norfolk", 39600],
+  ["Pacific/Noumea", 39600],
+  ["Pacific/Pago_Pago", -39600],
+  ["Pacific/Palau", 32400],
+  ["Pacific/Pitcairn", -28800],
+  ["Pacific/Port_Moresby", 36e3],
+  ["Pacific/Rarotonga", -36e3],
+  ["Pacific/Tahiti", -36e3],
+  ["Pacific/Tarawa", 43200],
+  ["Pacific/Tongatapu", 46800]
+]);
+
+// build/dev/javascript/birl/birl_ffi.mjs
+function now() {
+  return Date.now() * 1e3;
+}
+function local_offset() {
+  const date = /* @__PURE__ */ new Date();
+  return -date.getTimezoneOffset();
+}
+function local_timezone() {
+  return new Some(Intl.DateTimeFormat().resolvedOptions().timeZone);
+}
+function monotonic_now() {
+  return Math.floor(globalThis.performance.now() * 1e3);
+}
+function to_parts(timestamp, offset) {
+  const date = new Date((timestamp + offset) / 1e3);
+  return [
+    [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()],
+    [
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds()
+    ]
+  ];
+}
+function from_parts(parts, offset) {
+  const date = new Date(
+    Date.UTC(
+      parts[0][0],
+      parts[0][1] - 1,
+      parts[0][2],
+      parts[1][0],
+      parts[1][1],
+      parts[1][2],
+      parts[1][3]
+    )
+  );
+  return date.getTime() * 1e3 - offset;
+}
+
+// build/dev/javascript/birl/birl.mjs
+var Time = class extends CustomType {
+  constructor(wall_time, offset, timezone, monotonic_time) {
+    super();
+    this.wall_time = wall_time;
+    this.offset = offset;
+    this.timezone = timezone;
+    this.monotonic_time = monotonic_time;
+  }
+};
+var Day2 = class extends CustomType {
+  constructor(year2, month2, date) {
+    super();
+    this.year = year2;
+    this.month = month2;
+    this.date = date;
+  }
+};
+var TimeOfDay = class extends CustomType {
+  constructor(hour2, minute2, second2, milli_second2) {
+    super();
+    this.hour = hour2;
+    this.minute = minute2;
+    this.second = second2;
+    this.milli_second = milli_second2;
+  }
+};
+function compare3(a2, b) {
+  let wta = a2.wall_time;
+  let mta = a2.monotonic_time;
+  let wtb = b.wall_time;
+  let mtb = b.monotonic_time;
+  let $ = (() => {
+    if (mta instanceof Some && mtb instanceof Some) {
+      let ta2 = mta[0];
+      let tb2 = mtb[0];
+      return [ta2, tb2];
+    } else {
+      return [wta, wtb];
+    }
+  })();
+  let ta = $[0];
+  let tb = $[1];
+  let $1 = ta === tb;
+  let $2 = ta < tb;
+  if ($1) {
+    return new Eq();
+  } else if ($2) {
+    return new Lt();
+  } else {
+    return new Gt();
+  }
+}
+function add2(value2, duration) {
+  let wt = value2.wall_time;
+  let o = value2.offset;
+  let timezone = value2.timezone;
+  let mt = value2.monotonic_time;
+  let duration$1 = duration[0];
+  if (mt instanceof Some) {
+    let mt$1 = mt[0];
+    return new Time(
+      wt + duration$1,
+      o,
+      timezone,
+      new Some(mt$1 + duration$1)
+    );
+  } else {
+    return new Time(wt + duration$1, o, timezone, new None());
+  }
+}
+function parse_offset(offset) {
+  return guard(
+    contains(toList(["Z", "z"]), offset),
+    new Ok(0),
+    () => {
+      let $ = from_string("([+-])");
+      if (!$.isOk()) {
+        throw makeError(
+          "let_assert",
+          "birl",
+          1332,
+          "",
+          "Pattern match failed, no pattern matched the value.",
+          { value: $ }
+        );
+      }
+      let re = $[0];
+      return then$(
+        (() => {
+          let $1 = split4(re, offset);
+          if ($1.hasLength(3) && $1.head === "" && $1.tail.head === "+") {
+            let offset$1 = $1.tail.tail.head;
+            return new Ok([1, offset$1]);
+          } else if ($1.hasLength(3) && $1.head === "" && $1.tail.head === "-") {
+            let offset$1 = $1.tail.tail.head;
+            return new Ok([-1, offset$1]);
+          } else if ($1.hasLength(1)) {
+            return new Ok([1, offset]);
+          } else {
+            return new Error(void 0);
+          }
+        })(),
+        (_use0) => {
+          let sign = _use0[0];
+          let offset$1 = _use0[1];
+          let $1 = split2(offset$1, ":");
+          if ($1.hasLength(2)) {
+            let hour_str = $1.head;
+            let minute_str = $1.tail.head;
+            return then$(
+              parse_int(hour_str),
+              (hour2) => {
+                return then$(
+                  parse_int(minute_str),
+                  (minute2) => {
+                    return new Ok(sign * (hour2 * 60 + minute2) * 60 * 1e6);
+                  }
+                );
+              }
+            );
+          } else if ($1.hasLength(1)) {
+            let offset$2 = $1.head;
+            let $2 = string_length(offset$2);
+            if ($2 === 1) {
+              return then$(
+                parse_int(offset$2),
+                (hour2) => {
+                  return new Ok(sign * hour2 * 3600 * 1e6);
+                }
+              );
+            } else if ($2 === 2) {
+              return then$(
+                parse_int(offset$2),
+                (number) => {
+                  let $3 = number < 14;
+                  if ($3) {
+                    return new Ok(sign * number * 3600 * 1e6);
+                  } else {
+                    return new Ok(
+                      sign * (divideInt(number, 10) * 60 + remainderInt(
+                        number,
+                        10
+                      )) * 60 * 1e6
+                    );
+                  }
+                }
+              );
+            } else if ($2 === 3) {
+              let $3 = first(offset$2);
+              if (!$3.isOk()) {
+                throw makeError(
+                  "let_assert",
+                  "birl",
+                  1362,
+                  "",
+                  "Pattern match failed, no pattern matched the value.",
+                  { value: $3 }
+                );
+              }
+              let hour_str = $3[0];
+              let minute_str = slice(offset$2, 1, 2);
+              return then$(
+                parse_int(hour_str),
+                (hour2) => {
+                  return then$(
+                    parse_int(minute_str),
+                    (minute2) => {
+                      return new Ok(
+                        sign * (hour2 * 60 + minute2) * 60 * 1e6
+                      );
+                    }
+                  );
+                }
+              );
+            } else if ($2 === 4) {
+              let hour_str = slice(offset$2, 0, 2);
+              let minute_str = slice(offset$2, 2, 2);
+              return then$(
+                parse_int(hour_str),
+                (hour2) => {
+                  return then$(
+                    parse_int(minute_str),
+                    (minute2) => {
+                      return new Ok(
+                        sign * (hour2 * 60 + minute2) * 60 * 1e6
+                      );
+                    }
+                  );
+                }
+              );
+            } else {
+              return new Error(void 0);
+            }
+          } else {
+            return new Error(void 0);
+          }
+        }
+      );
+    }
+  );
+}
+function set_offset(value2, new_offset) {
+  return then$(
+    parse_offset(new_offset),
+    (new_offset_number) => {
+      {
+        let t = value2.wall_time;
+        let timezone = value2.timezone;
+        let mt = value2.monotonic_time;
+        let _pipe = new Time(t, new_offset_number, timezone, mt);
+        return new Ok(_pipe);
+      }
+    }
+  );
+}
+function generate_offset(offset) {
+  return guard(
+    offset === 0,
+    new Ok("Z"),
+    () => {
+      let $ = (() => {
+        let _pipe = toList([[offset, new MicroSecond()]]);
+        let _pipe$1 = new$3(_pipe);
+        return decompose(_pipe$1);
+      })();
+      if ($.hasLength(2) && $.head[1] instanceof Hour && $.tail.head[1] instanceof Minute) {
+        let hour2 = $.head[0];
+        let minute2 = $.tail.head[0];
+        let _pipe = toList([
+          (() => {
+            let $1 = hour2 > 0;
+            if ($1) {
+              return concat2(
+                toList([
+                  "+",
+                  (() => {
+                    let _pipe2 = hour2;
+                    let _pipe$12 = to_string(_pipe2);
+                    return pad_start(_pipe$12, 2, "0");
+                  })()
+                ])
+              );
+            } else {
+              return concat2(
+                toList([
+                  "-",
+                  (() => {
+                    let _pipe2 = hour2;
+                    let _pipe$12 = absolute_value(_pipe2);
+                    let _pipe$2 = to_string(_pipe$12);
+                    return pad_start(_pipe$2, 2, "0");
+                  })()
+                ])
+              );
+            }
+          })(),
+          (() => {
+            let _pipe2 = minute2;
+            let _pipe$12 = absolute_value(_pipe2);
+            let _pipe$2 = to_string(_pipe$12);
+            return pad_start(_pipe$2, 2, "0");
+          })()
+        ]);
+        let _pipe$1 = join(_pipe, ":");
+        return new Ok(_pipe$1);
+      } else if ($.hasLength(1) && $.head[1] instanceof Hour) {
+        let hour2 = $.head[0];
+        let _pipe = toList([
+          (() => {
+            let $1 = hour2 > 0;
+            if ($1) {
+              return concat2(
+                toList([
+                  "+",
+                  (() => {
+                    let _pipe2 = hour2;
+                    let _pipe$12 = to_string(_pipe2);
+                    return pad_start(_pipe$12, 2, "0");
+                  })()
+                ])
+              );
+            } else {
+              return concat2(
+                toList([
+                  "-",
+                  (() => {
+                    let _pipe2 = hour2;
+                    let _pipe$12 = absolute_value(_pipe2);
+                    let _pipe$2 = to_string(_pipe$12);
+                    return pad_start(_pipe$2, 2, "0");
+                  })()
+                ])
+              );
+            }
+          })(),
+          "00"
+        ]);
+        let _pipe$1 = join(_pipe, ":");
+        return new Ok(_pipe$1);
+      } else {
+        return new Error(void 0);
+      }
+    }
+  );
+}
+function get_offset(value2) {
+  let offset = value2.offset;
+  let $ = generate_offset(offset);
+  if (!$.isOk()) {
+    throw makeError(
+      "let_assert",
+      "birl",
+      1208,
+      "get_offset",
+      "Pattern match failed, no pattern matched the value.",
+      { value: $ }
+    );
+  }
+  let offset$1 = $[0];
+  return offset$1;
+}
+function is_invalid_date(date) {
+  let _pipe = date;
+  let _pipe$1 = to_utf_codepoints(_pipe);
+  let _pipe$2 = map2(_pipe$1, utf_codepoint_to_int);
+  return any(
+    _pipe$2,
+    (code2) => {
+      if (code2 === 45) {
+        return false;
+      } else if (code2 >= 48 && code2 <= 57) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  );
+}
+function is_invalid_time(time) {
+  let _pipe = time;
+  let _pipe$1 = to_utf_codepoints(_pipe);
+  let _pipe$2 = map2(_pipe$1, utf_codepoint_to_int);
+  return any(
+    _pipe$2,
+    (code2) => {
+      if (code2 >= 48 && code2 <= 58) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  );
+}
+function parse_section(section, pattern_string, default$2) {
+  let $ = from_string(pattern_string);
+  if (!$.isOk()) {
+    throw makeError(
+      "let_assert",
+      "birl",
+      1527,
+      "parse_section",
+      "Pattern match failed, no pattern matched the value.",
+      { value: $ }
+    );
+  }
+  let pattern = $[0];
+  let $1 = scan2(pattern, section);
+  if ($1.hasLength(1) && $1.head instanceof Match && $1.head.submatches.hasLength(1) && $1.head.submatches.head instanceof Some) {
+    let major = $1.head.submatches.head[0];
+    return toList([parse_int(major), new Ok(default$2), new Ok(default$2)]);
+  } else if ($1.hasLength(1) && $1.head instanceof Match && $1.head.submatches.hasLength(2) && $1.head.submatches.head instanceof Some && $1.head.submatches.tail.head instanceof Some) {
+    let major = $1.head.submatches.head[0];
+    let middle = $1.head.submatches.tail.head[0];
+    return toList([parse_int(major), parse_int(middle), new Ok(default$2)]);
+  } else if ($1.hasLength(1) && $1.head instanceof Match && $1.head.submatches.hasLength(3) && $1.head.submatches.head instanceof Some && $1.head.submatches.tail.head instanceof Some && $1.head.submatches.tail.tail.head instanceof Some) {
+    let major = $1.head.submatches.head[0];
+    let middle = $1.head.submatches.tail.head[0];
+    let minor = $1.head.submatches.tail.tail.head[0];
+    return toList([parse_int(major), parse_int(middle), parse_int(minor)]);
+  } else {
+    return toList([new Error(void 0)]);
+  }
+}
+function parse_date_section(date) {
+  return guard(
+    is_invalid_date(date),
+    new Error(void 0),
+    () => {
+      let _pipe = (() => {
+        let $ = contains_string(date, "-");
+        if ($) {
+          let $1 = from_string(
+            "(\\d{4})(?:-(1[0-2]|0?[0-9]))?(?:-(3[0-1]|[1-2][0-9]|0?[0-9]))?"
+          );
+          if (!$1.isOk()) {
+            throw makeError(
+              "let_assert",
+              "birl",
+              1447,
+              "",
+              "Pattern match failed, no pattern matched the value.",
+              { value: $1 }
+            );
+          }
+          let dash_pattern = $1[0];
+          let $2 = scan2(dash_pattern, date);
+          if ($2.hasLength(1) && $2.head instanceof Match && $2.head.submatches.hasLength(1) && $2.head.submatches.head instanceof Some) {
+            let major = $2.head.submatches.head[0];
+            return toList([parse_int(major), new Ok(1), new Ok(1)]);
+          } else if ($2.hasLength(1) && $2.head instanceof Match && $2.head.submatches.hasLength(2) && $2.head.submatches.head instanceof Some && $2.head.submatches.tail.head instanceof Some) {
+            let major = $2.head.submatches.head[0];
+            let middle = $2.head.submatches.tail.head[0];
+            return toList([parse_int(major), parse_int(middle), new Ok(1)]);
+          } else if ($2.hasLength(1) && $2.head instanceof Match && $2.head.submatches.hasLength(3) && $2.head.submatches.head instanceof Some && $2.head.submatches.tail.head instanceof Some && $2.head.submatches.tail.tail.head instanceof Some) {
+            let major = $2.head.submatches.head[0];
+            let middle = $2.head.submatches.tail.head[0];
+            let minor = $2.head.submatches.tail.tail.head[0];
+            return toList([
+              parse_int(major),
+              parse_int(middle),
+              parse_int(minor)
+            ]);
+          } else {
+            return toList([new Error(void 0)]);
+          }
+        } else {
+          return parse_section(
+            date,
+            "(\\d{4})(1[0-2]|0?[0-9])?(3[0-1]|[1-2][0-9]|0?[0-9])?",
+            1
+          );
+        }
+      })();
+      return try_map(_pipe, identity3);
+    }
+  );
+}
+function parse_time_section(time) {
+  return guard(
+    is_invalid_time(time),
+    new Error(void 0),
+    () => {
+      let _pipe = parse_section(
+        time,
+        "(2[0-3]|1[0-9]|0?[0-9])([1-5][0-9]|0?[0-9])?([1-5][0-9]|0?[0-9])?",
+        0
+      );
+      return try_map(_pipe, identity3);
+    }
+  );
+}
+function utc_now() {
+  let now$1 = now();
+  let monotonic_now$1 = monotonic_now();
+  return new Time(
+    now$1,
+    0,
+    new Some("Etc/UTC"),
+    new Some(monotonic_now$1)
+  );
+}
+function to_parts2(value2) {
+  {
+    let t = value2.wall_time;
+    let o = value2.offset;
+    let $ = to_parts(t, o);
+    let date = $[0];
+    let time = $[1];
+    let $1 = generate_offset(o);
+    if (!$1.isOk()) {
+      throw makeError(
+        "let_assert",
+        "birl",
+        1324,
+        "to_parts",
+        "Pattern match failed, no pattern matched the value.",
+        { value: $1 }
+      );
+    }
+    let offset = $1[0];
+    return [date, time, offset];
+  }
+}
+function get_day(value2) {
+  let $ = to_parts2(value2);
+  let year2 = $[0][0];
+  let month$1 = $[0][1];
+  let day2 = $[0][2];
+  return new Day2(year2, month$1, day2);
+}
+function get_time_of_day(value2) {
+  let $ = to_parts2(value2);
+  let hour2 = $[1][0];
+  let minute2 = $[1][1];
+  let second2 = $[1][2];
+  let milli_second2 = $[1][3];
+  return new TimeOfDay(hour2, minute2, second2, milli_second2);
+}
+function from_parts2(date, time, offset) {
+  return then$(
+    parse_offset(offset),
+    (offset_number) => {
+      let _pipe = from_parts([date, time], offset_number);
+      let _pipe$1 = new Time(
+        _pipe,
+        offset_number,
+        new None(),
+        new None()
+      );
+      return new Ok(_pipe$1);
+    }
+  );
+}
+function parse(value2) {
+  let $ = from_string("(.*)([+|\\-].*)");
+  if (!$.isOk()) {
+    throw makeError(
+      "let_assert",
+      "birl",
+      298,
+      "parse",
+      "Pattern match failed, no pattern matched the value.",
+      { value: $ }
+    );
+  }
+  let offset_pattern = $[0];
+  let value$1 = trim(value2);
+  return then$(
+    (() => {
+      let $1 = split2(value$1, "T");
+      let $2 = split2(value$1, "t");
+      let $3 = split2(value$1, " ");
+      if ($1.hasLength(2)) {
+        let day_string = $1.head;
+        let time_string = $1.tail.head;
+        return new Ok([day_string, time_string]);
+      } else if ($2.hasLength(2)) {
+        let day_string = $2.head;
+        let time_string = $2.tail.head;
+        return new Ok([day_string, time_string]);
+      } else if ($3.hasLength(2)) {
+        let day_string = $3.head;
+        let time_string = $3.tail.head;
+        return new Ok([day_string, time_string]);
+      } else if ($1.hasLength(1) && $2.hasLength(1) && $3.hasLength(1)) {
+        return new Ok([value$1, "00"]);
+      } else {
+        return new Error(void 0);
+      }
+    })(),
+    (_use0) => {
+      let day_string = _use0[0];
+      let offsetted_time_string = _use0[1];
+      let day_string$1 = trim(day_string);
+      let offsetted_time_string$1 = trim(offsetted_time_string);
+      return then$(
+        (() => {
+          let $1 = ends_with(offsetted_time_string$1, "Z") || ends_with(
+            offsetted_time_string$1,
+            "z"
+          );
+          if ($1) {
+            return new Ok(
+              [
+                day_string$1,
+                drop_end(offsetted_time_string$1, 1),
+                "+00:00"
+              ]
+            );
+          } else {
+            let $2 = scan2(offset_pattern, offsetted_time_string$1);
+            if ($2.hasLength(1) && $2.head instanceof Match && $2.head.submatches.hasLength(2) && $2.head.submatches.head instanceof Some && $2.head.submatches.tail.head instanceof Some) {
+              let time_string = $2.head.submatches.head[0];
+              let offset_string = $2.head.submatches.tail.head[0];
+              return new Ok([day_string$1, time_string, offset_string]);
+            } else {
+              let $3 = scan2(offset_pattern, day_string$1);
+              if ($3.hasLength(1) && $3.head instanceof Match && $3.head.submatches.hasLength(2) && $3.head.submatches.head instanceof Some && $3.head.submatches.tail.head instanceof Some) {
+                let day_string$2 = $3.head.submatches.head[0];
+                let offset_string = $3.head.submatches.tail.head[0];
+                return new Ok([day_string$2, "00", offset_string]);
+              } else {
+                return new Error(void 0);
+              }
+            }
+          }
+        })(),
+        (_use02) => {
+          let day_string$2 = _use02[0];
+          let time_string = _use02[1];
+          let offset_string = _use02[2];
+          let time_string$1 = replace(time_string, ":", "");
+          return then$(
+            (() => {
+              let $1 = split2(time_string$1, ".");
+              let $2 = split2(time_string$1, ",");
+              if ($1.hasLength(1) && $2.hasLength(1)) {
+                return new Ok([time_string$1, new Ok(0)]);
+              } else if ($1.hasLength(2) && $2.hasLength(1)) {
+                let time_string$2 = $1.head;
+                let milli_seconds_string = $1.tail.head;
+                return new Ok(
+                  [
+                    time_string$2,
+                    (() => {
+                      let _pipe = milli_seconds_string;
+                      let _pipe$1 = slice(_pipe, 0, 3);
+                      let _pipe$2 = pad_end(_pipe$1, 3, "0");
+                      return parse_int(_pipe$2);
+                    })()
+                  ]
+                );
+              } else if ($1.hasLength(1) && $2.hasLength(2)) {
+                let time_string$2 = $2.head;
+                let milli_seconds_string = $2.tail.head;
+                return new Ok(
+                  [
+                    time_string$2,
+                    (() => {
+                      let _pipe = milli_seconds_string;
+                      let _pipe$1 = slice(_pipe, 0, 3);
+                      let _pipe$2 = pad_end(_pipe$1, 3, "0");
+                      return parse_int(_pipe$2);
+                    })()
+                  ]
+                );
+              } else {
+                return new Error(void 0);
+              }
+            })(),
+            (_use03) => {
+              let time_string$2 = _use03[0];
+              let milli_seconds_result = _use03[1];
+              if (milli_seconds_result.isOk()) {
+                let milli_seconds = milli_seconds_result[0];
+                return then$(
+                  parse_date_section(day_string$2),
+                  (day2) => {
+                    if (!day2.hasLength(3)) {
+                      throw makeError(
+                        "let_assert",
+                        "birl",
+                        370,
+                        "",
+                        "Pattern match failed, no pattern matched the value.",
+                        { value: day2 }
+                      );
+                    }
+                    let year2 = day2.head;
+                    let month$1 = day2.tail.head;
+                    let date = day2.tail.tail.head;
+                    return then$(
+                      parse_time_section(time_string$2),
+                      (time_of_day) => {
+                        if (!time_of_day.hasLength(3)) {
+                          throw makeError(
+                            "let_assert",
+                            "birl",
+                            373,
+                            "",
+                            "Pattern match failed, no pattern matched the value.",
+                            { value: time_of_day }
+                          );
+                        }
+                        let hour2 = time_of_day.head;
+                        let minute2 = time_of_day.tail.head;
+                        let second2 = time_of_day.tail.tail.head;
+                        return from_parts2(
+                          [year2, month$1, date],
+                          [hour2, minute2, second2, milli_seconds],
+                          offset_string
+                        );
+                      }
+                    );
+                  }
+                );
+              } else {
+                return new Error(void 0);
+              }
+            }
+          );
+        }
+      );
+    }
+  );
+}
+function now2() {
+  let now$1 = now();
+  let offset_in_minutes = local_offset();
+  let monotonic_now$1 = monotonic_now();
+  let timezone = local_timezone();
+  return new Time(
+    now$1,
+    offset_in_minutes * 6e7,
+    (() => {
+      let _pipe = map(
+        timezone,
+        (tz) => {
+          let $ = any(list2, (item) => {
+            return item[0] === tz;
+          });
+          if ($) {
+            return new Some(tz);
+          } else {
+            return new None();
+          }
+        }
+      );
+      return flatten(_pipe);
+    })(),
+    new Some(monotonic_now$1)
+  );
+}
+
+// build/dev/javascript/app/helpers/date.mjs
+var DateTime = class extends CustomType {
+  constructor(time) {
+    super();
+    this.time = time;
+  }
+};
+function now3() {
+  return new DateTime(now2());
+}
+function parse_localized_datetime(datetime) {
+  let _pipe = parse(datetime + get_offset(now2()));
+  return map3(_pipe, (var0) => {
+    return new DateTime(var0);
+  });
+}
+function to_utc(datetime) {
+  return new DateTime(
+    unwrap(set_offset(datetime.time, "Z"), datetime.time)
+  );
+}
+function to_localized(datetime) {
+  return new DateTime(
+    unwrap(
+      set_offset(datetime.time, get_offset(now2())),
+      datetime.time
+    )
+  );
+}
+function to_string2(datetime) {
+  let $ = get_day(datetime.time);
+  let year2 = $.year;
+  let month2 = $.month;
+  let day2 = $.date;
+  let $1 = get_time_of_day(datetime.time);
+  let hour2 = $1.hour;
+  let minute2 = $1.minute;
+  let day$1 = (() => {
+    let _pipe = day2;
+    let _pipe$1 = to_string(_pipe);
+    return pad_start(_pipe$1, 2, "0");
+  })();
+  let month$1 = (() => {
+    let _pipe = month2;
+    let _pipe$1 = to_string(_pipe);
+    return pad_start(_pipe$1, 2, "0");
+  })();
+  let year$1 = (() => {
+    let _pipe = year2;
+    let _pipe$1 = to_string(_pipe);
+    return pad_start(_pipe$1, 4, "0");
+  })();
+  let hour$1 = (() => {
+    let _pipe = hour2;
+    let _pipe$1 = to_string(_pipe);
+    return pad_start(_pipe$1, 2, "0");
+  })();
+  let minute$1 = (() => {
+    let _pipe = minute2;
+    let _pipe$1 = to_string(_pipe);
+    return pad_start(_pipe$1, 2, "0");
+  })();
+  return day$1 + "/" + month$1 + "/" + year$1 + " " + hour$1 + ":" + minute$1;
+}
+function next_period(loop$date, loop$period) {
+  while (true) {
+    let date = loop$date;
+    let period = loop$period;
+    let $ = compare3(date.time, utc_now());
+    if ($ instanceof Lt) {
+      loop$date = new DateTime(add2(date.time, days(period)));
+      loop$period = period;
+    } else {
+      return date;
+    }
+  }
+}
+
 // build/dev/javascript/app/app.mjs
 var Task = class extends CustomType {
-  constructor(name) {
+  constructor(name, time, period) {
     super();
     this.name = name;
+    this.time = time;
+    this.period = period;
   }
 };
 var Model2 = class extends CustomType {
-  constructor(tasks, task_menu_open, task_input) {
+  constructor(tasks, task_menu_open, task_name, task_time, task_period) {
     super();
     this.tasks = tasks;
     this.task_menu_open = task_menu_open;
-    this.task_input = task_input;
+    this.task_name = task_name;
+    this.task_time = task_time;
+    this.task_period = task_period;
   }
 };
 var UserOpenedTaskMenu = class extends CustomType {
 };
 var UserClosedTaskMenu = class extends CustomType {
 };
-var UserUpdatedInput = class extends CustomType {
+var UserUpdatedTaskName = class extends CustomType {
+  constructor(x0) {
+    super();
+    this[0] = x0;
+  }
+};
+var UserUpdatedTaskTime = class extends CustomType {
+  constructor(x0) {
+    super();
+    this[0] = x0;
+  }
+};
+var UserUpdatedTaskPeriod = class extends CustomType {
   constructor(x0) {
     super();
     this[0] = x0;
@@ -3329,24 +5042,74 @@ var UserDeletedTask = class extends CustomType {
   }
 };
 function init2(_) {
-  return new Model2(toList([]), false, "");
+  return new Model2(toList([]), false, "", now3(), 0);
 }
 function update(model, msg) {
   if (msg instanceof UserOpenedTaskMenu) {
     let _record = model;
-    return new Model2(_record.tasks, true, _record.task_input);
+    return new Model2(
+      _record.tasks,
+      true,
+      _record.task_name,
+      _record.task_time,
+      _record.task_period
+    );
   } else if (msg instanceof UserClosedTaskMenu) {
     let _record = model;
-    return new Model2(_record.tasks, false, _record.task_input);
-  } else if (msg instanceof UserUpdatedInput) {
+    return new Model2(
+      _record.tasks,
+      false,
+      _record.task_name,
+      _record.task_time,
+      _record.task_period
+    );
+  } else if (msg instanceof UserUpdatedTaskName) {
     let input$1 = msg[0];
     let _record = model;
-    return new Model2(_record.tasks, _record.task_menu_open, input$1);
+    return new Model2(
+      _record.tasks,
+      _record.task_menu_open,
+      input$1,
+      _record.task_time,
+      _record.task_period
+    );
+  } else if (msg instanceof UserUpdatedTaskTime) {
+    let input$1 = msg[0];
+    let _record = model;
+    return new Model2(
+      _record.tasks,
+      _record.task_menu_open,
+      _record.task_name,
+      unwrap(
+        map3(parse_localized_datetime(input$1), to_utc),
+        now3()
+      ),
+      _record.task_period
+    );
+  } else if (msg instanceof UserUpdatedTaskPeriod) {
+    let input$1 = msg[0];
+    let _record = model;
+    return new Model2(
+      _record.tasks,
+      _record.task_menu_open,
+      _record.task_name,
+      _record.task_time,
+      unwrap(parse_int(input$1), 0)
+    );
   } else if (msg instanceof UserAddedTask) {
     return new Model2(
-      prepend(new Task(model.task_input), model.tasks),
+      prepend(
+        new Task(
+          model.task_name,
+          next_period(model.task_time, model.task_period),
+          model.task_period
+        ),
+        model.tasks
+      ),
       false,
-      ""
+      "",
+      now3(),
+      0
     );
   } else {
     let task = msg[0];
@@ -3356,7 +5119,9 @@ function update(model, msg) {
         return !isEqual(t, task);
       }),
       _record.task_menu_open,
-      _record.task_input
+      _record.task_name,
+      _record.task_time,
+      _record.task_period
     );
   }
 }
@@ -3368,19 +5133,26 @@ function view(model) {
       prepend(
         div(
           toList([]),
-          map(
+          map2(
             model.tasks,
             (task) => {
               return card(
                 toList([
                   round3(),
-                  padding(spacing.md, spacing.md)
+                  padding2(spacing.md, spacing.md)
                 ]),
                 toList([
                   content(
                     toList([]),
                     toList([
                       text2(task.name),
+                      text2(
+                        to_string2(
+                          to_localized(
+                            next_period(task.time, task.period)
+                          )
+                        )
+                      ),
                       button2(
                         toList([
                           on_click(new UserDeletedTask(task)),
@@ -3408,9 +5180,29 @@ function view(model) {
                   toList([
                     on_input(
                       (var0) => {
-                        return new UserUpdatedInput(var0);
+                        return new UserUpdatedTaskName(var0);
                       }
                     )
+                  ])
+                ),
+                input2(
+                  toList([
+                    on_input(
+                      (var0) => {
+                        return new UserUpdatedTaskTime(var0);
+                      }
+                    ),
+                    type_("datetime-local")
+                  ])
+                ),
+                input2(
+                  toList([
+                    on_input(
+                      (var0) => {
+                        return new UserUpdatedTaskPeriod(var0);
+                      }
+                    ),
+                    type_("number")
                   ])
                 ),
                 button2(
@@ -3442,7 +5234,7 @@ function main2() {
     throw makeError(
       "let_assert",
       "app",
-      33,
+      43,
       "main",
       "Pattern match failed, no pattern matched the value.",
       { value: $ }
