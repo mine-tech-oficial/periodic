@@ -1,6 +1,8 @@
 import birl
 import birl/duration
+import gleam/dynamic/decode
 import gleam/int
+import gleam/json
 import gleam/order
 import gleam/result
 import gleam/string
@@ -57,4 +59,53 @@ pub fn next_period(date: DateTime(UTC), period: Int) -> DateTime(UTC) {
       next_period(DateTime(birl.add(date.time, duration.days(period))), period)
     _ -> date
   }
+}
+
+pub fn decoder() -> decode.Decoder(DateTime(UTC)) {
+  use erlang_datetime <- decode.then(erlang_datetime_decoder())
+  let #(date, time) = erlang_datetime
+  let datetime =
+    birl.unix_epoch
+    |> birl.set_day(birl.Day(date.0, date.1, date.2))
+    |> birl.set_time_of_day(birl.TimeOfDay(time.0, time.1, time.2, 0))
+  decode.success(DateTime(time: datetime))
+}
+
+fn erlang_datetime_decoder() -> decode.Decoder(
+  #(#(Int, Int, Int), #(Int, Int, Int)),
+) {
+  use a <- decode.field(0, {
+    use a <- decode.field(0, decode.int)
+    use b <- decode.field(1, decode.int)
+    use c <- decode.field(2, decode.int)
+
+    decode.success(#(a, b, c))
+  })
+  use b <- decode.field(1, {
+    use a <- decode.field(0, decode.int)
+    use b <- decode.field(1, decode.int)
+    use c <- decode.field(2, decode.int)
+
+    decode.success(#(a, b, c))
+  })
+
+  decode.success(#(a, b))
+}
+
+fn to_erlang_datetime(
+  datetime: DateTime(UTC),
+) -> #(#(Int, Int, Int), #(Int, Int, Int)) {
+  let birl.Day(year, month, day) = birl.get_day(datetime.time)
+  let birl.TimeOfDay(hour, minute, second, _) =
+    birl.get_time_of_day(datetime.time)
+
+  #(#(year, month, day), #(hour, minute, second))
+}
+
+pub fn to_json(datetime: DateTime(UTC)) -> json.Json {
+  let #(date, time) = to_erlang_datetime(datetime)
+  json.array([[date.0, date.1, date.2], [time.0, time.1, time.2]], json.array(
+    _,
+    json.int,
+  ))
 }
