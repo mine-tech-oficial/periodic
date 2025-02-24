@@ -165,12 +165,12 @@ function byteArrayToInt(byteArray, start3, end, isBigEndian, isSigned) {
   }
 }
 function byteArrayToFloat(byteArray, start3, end, isBigEndian) {
-  const view2 = new DataView(byteArray.buffer);
+  const view3 = new DataView(byteArray.buffer);
   const byteSize = end - start3;
   if (byteSize === 8) {
-    return view2.getFloat64(start3, !isBigEndian);
+    return view3.getFloat64(start3, !isBigEndian);
   } else if (byteSize === 4) {
-    return view2.getFloat32(start3, !isBigEndian);
+    return view3.getFloat32(start3, !isBigEndian);
   } else {
     const msg = `Sized floats must be 32-bit or 64-bit on JavaScript, got size of ${byteSize * 8} bits`;
     throw new globalThis.Error(msg);
@@ -1571,18 +1571,18 @@ function utf_codepoint_to_int(utf_codepoint) {
 function new_map() {
   return Dict.new();
 }
-function map_to_list(map7) {
-  return List.fromArray(map7.entries());
+function map_to_list(map8) {
+  return List.fromArray(map8.entries());
 }
-function map_get(map7, key2) {
-  const value3 = map7.get(key2, NOT_FOUND);
+function map_get(map8, key2) {
+  const value3 = map8.get(key2, NOT_FOUND);
   if (value3 === NOT_FOUND) {
     return new Error(Nil);
   }
   return new Ok(value3);
 }
-function map_insert(key2, value3, map7) {
-  return map7.set(key2, value3);
+function map_insert(key2, value3, map8) {
+  return map8.set(key2, value3);
 }
 function classify_dynamic(data) {
   if (typeof data === "string") {
@@ -1722,10 +1722,10 @@ function inspectString(str) {
   new_str += '"';
   return new_str;
 }
-function inspectDict(map7) {
+function inspectDict(map8) {
   let body2 = "dict.from_list([";
   let first4 = true;
-  map7.forEach((value3, key2) => {
+  map8.forEach((value3, key2) => {
     if (!first4)
       body2 = body2 + ", ";
     body2 = body2 + "#(" + inspect(key2) + ", " + inspect(value3) + ")";
@@ -2510,6 +2510,20 @@ function attribute(name, value3) {
 function on(name, handler) {
   return new Event2("on" + name, handler);
 }
+function map5(attr, f) {
+  if (attr instanceof Attribute) {
+    let name$1 = attr[0];
+    let value$1 = attr[1];
+    let as_property = attr.as_property;
+    return new Attribute(name$1, value$1, as_property);
+  } else {
+    let on$1 = attr[0];
+    let handler = attr[1];
+    return new Event2(on$1, (e) => {
+      return map3(handler(e), f);
+    });
+  }
+}
 function style(properties) {
   return attribute(
     "style",
@@ -2577,6 +2591,45 @@ function fragment(elements2) {
     toList([style(toList([["display", "contents"]]))]),
     elements2
   );
+}
+function map6(element2, f) {
+  if (element2 instanceof Text) {
+    let content2 = element2.content;
+    return new Text(content2);
+  } else if (element2 instanceof Map2) {
+    let subtree = element2.subtree;
+    return new Map2(() => {
+      return map6(subtree(), f);
+    });
+  } else {
+    let key2 = element2.key;
+    let namespace = element2.namespace;
+    let tag = element2.tag;
+    let attrs = element2.attrs;
+    let children2 = element2.children;
+    let self_closing = element2.self_closing;
+    let void$ = element2.void;
+    return new Map2(
+      () => {
+        return new Element2(
+          key2,
+          namespace,
+          tag,
+          map2(
+            attrs,
+            (_capture) => {
+              return map5(_capture, f);
+            }
+          ),
+          map2(children2, (_capture) => {
+            return map6(_capture, f);
+          }),
+          self_closing,
+          void$
+        );
+      }
+    );
+  }
 }
 
 // build/dev/javascript/gleam_stdlib/gleam/set.mjs
@@ -2990,13 +3043,13 @@ var LustreClientApplication = class _LustreClientApplication {
    *
    * @returns {Gleam.Ok<(action: Lustre.Action<Lustre.Client, Msg>>) => void>}
    */
-  static start({ init: init3, update: update2, view: view2 }, selector, flags) {
+  static start({ init: init4, update: update3, view: view3 }, selector, flags) {
     if (!is_browser())
       return new Error(new NotABrowser());
     const root = selector instanceof HTMLElement ? selector : document.querySelector(selector);
     if (!root)
       return new Error(new ElementNotFound(selector));
-    const app = new _LustreClientApplication(root, init3(flags), update2, view2);
+    const app = new _LustreClientApplication(root, init4(flags), update3, view3);
     return new Ok((action) => app.send(action));
   }
   /**
@@ -3007,11 +3060,11 @@ var LustreClientApplication = class _LustreClientApplication {
    *
    * @returns {LustreClientApplication}
    */
-  constructor(root, [init3, effects], update2, view2) {
+  constructor(root, [init4, effects], update3, view3) {
     this.root = root;
-    this.#model = init3;
-    this.#update = update2;
-    this.#view = view2;
+    this.#model = init4;
+    this.#update = update3;
+    this.#view = view3;
     this.#tickScheduled = window.setTimeout(
       () => this.#tick(effects.all.toArray(), true),
       0
@@ -3126,20 +3179,20 @@ var LustreClientApplication = class _LustreClientApplication {
 };
 var start = LustreClientApplication.start;
 var LustreServerApplication = class _LustreServerApplication {
-  static start({ init: init3, update: update2, view: view2, on_attribute_change }, flags) {
+  static start({ init: init4, update: update3, view: view3, on_attribute_change }, flags) {
     const app = new _LustreServerApplication(
-      init3(flags),
-      update2,
-      view2,
+      init4(flags),
+      update3,
+      view3,
       on_attribute_change
     );
     return new Ok((action) => app.send(action));
   }
-  constructor([model, effects], update2, view2, on_attribute_change) {
+  constructor([model, effects], update3, view3, on_attribute_change) {
     this.#model = model;
-    this.#update = update2;
-    this.#view = view2;
-    this.#html = view2(model);
+    this.#update = update3;
+    this.#view = view3;
+    this.#html = view3(model);
     this.#onAttributeChange = on_attribute_change;
     this.#renderers = /* @__PURE__ */ new Map();
     this.#handlers = handlers(this.#html);
@@ -3240,11 +3293,11 @@ var is_browser = () => globalThis.window && window.document;
 
 // build/dev/javascript/lustre/lustre.mjs
 var App = class extends CustomType {
-  constructor(init3, update2, view2, on_attribute_change) {
+  constructor(init4, update3, view3, on_attribute_change) {
     super();
-    this.init = init3;
-    this.update = update2;
-    this.view = view2;
+    this.init = init4;
+    this.update = update3;
+    this.view = view3;
     this.on_attribute_change = on_attribute_change;
   }
 };
@@ -3256,8 +3309,8 @@ var ElementNotFound = class extends CustomType {
 };
 var NotABrowser = class extends CustomType {
 };
-function application(init3, update2, view2) {
-  return new App(init3, update2, view2, new None());
+function application(init4, update3, view3) {
+  return new App(init4, update3, view3, new None());
 }
 function start2(app, selector, flags) {
   return guard(
@@ -4084,8 +4137,8 @@ function to_style(theme) {
     );
   }
 }
-function inject(theme, view2) {
-  return fragment(toList([to_style(theme), view2()]));
+function inject(theme, view3) {
+  return fragment(toList([to_style(theme), view3()]));
 }
 var spacing = /* @__PURE__ */ new SizeVariables(
   "var(--lustre-ui-spacing-xs)",
@@ -4168,13 +4221,6 @@ function radius2(value3) {
 }
 function round3() {
   return radius2(radius.md);
-}
-
-// build/dev/javascript/lustre_ui/lustre/ui/input.mjs
-function input2(attributes) {
-  return input(
-    prepend(class$("lustre-ui-input"), attributes)
-  );
 }
 
 // build/dev/javascript/plinth/document_ffi.mjs
@@ -5741,11 +5787,17 @@ function decoder3() {
   );
 }
 
-// build/dev/javascript/web/web.mjs
+// build/dev/javascript/lustre_ui/lustre/ui/input.mjs
+function input2(attributes) {
+  return input(
+    prepend(class$("lustre-ui-input"), attributes)
+  );
+}
+
+// build/dev/javascript/web/web/task_input.mjs
 var Model2 = class extends CustomType {
-  constructor(tasks, task_menu_open, task_name, task_time, task_period) {
+  constructor(task_menu_open, task_name, task_time, task_period) {
     super();
-    this.tasks = tasks;
     this.task_menu_open = task_menu_open;
     this.task_name = task_name;
     this.task_time = task_time;
@@ -5776,6 +5828,131 @@ var UserUpdatedTaskPeriod = class extends CustomType {
 };
 var UserAddedTask = class extends CustomType {
 };
+function init2() {
+  return new Model2(false, "", now3(), 0);
+}
+function update(model, msg) {
+  if (msg instanceof UserOpenedTaskMenu) {
+    let _record = model;
+    return new Model2(
+      true,
+      _record.task_name,
+      _record.task_time,
+      _record.task_period
+    );
+  } else if (msg instanceof UserClosedTaskMenu) {
+    let _record = model;
+    return new Model2(
+      false,
+      _record.task_name,
+      _record.task_time,
+      _record.task_period
+    );
+  } else if (msg instanceof UserUpdatedTaskName) {
+    let input$1 = msg[0];
+    let _record = model;
+    return new Model2(
+      _record.task_menu_open,
+      input$1,
+      _record.task_time,
+      _record.task_period
+    );
+  } else if (msg instanceof UserUpdatedTaskTime) {
+    let input$1 = msg[0];
+    let _record = model;
+    return new Model2(
+      _record.task_menu_open,
+      _record.task_name,
+      unwrap(
+        map3(
+          parse_localized_datetime(input$1),
+          to_utc
+        ),
+        now3()
+      ),
+      _record.task_period
+    );
+  } else if (msg instanceof UserUpdatedTaskPeriod) {
+    let input$1 = msg[0];
+    let _record = model;
+    return new Model2(
+      _record.task_menu_open,
+      _record.task_name,
+      _record.task_time,
+      unwrap(parse_int(input$1), 0)
+    );
+  } else {
+    return new Model2(false, "", now3(), 0);
+  }
+}
+function view(model) {
+  return div(
+    toList([]),
+    prepend(
+      button2(
+        toList([on_click(new UserOpenedTaskMenu()), icon()]),
+        toList([text2("+")])
+      ),
+      (() => {
+        let $ = model.task_menu_open;
+        if ($) {
+          return toList([
+            input2(
+              toList([
+                on_input(
+                  (var0) => {
+                    return new UserUpdatedTaskName(var0);
+                  }
+                )
+              ])
+            ),
+            input2(
+              toList([
+                on_input(
+                  (var0) => {
+                    return new UserUpdatedTaskTime(var0);
+                  }
+                ),
+                type_("datetime-local")
+              ])
+            ),
+            input2(
+              toList([
+                on_input(
+                  (var0) => {
+                    return new UserUpdatedTaskPeriod(var0);
+                  }
+                ),
+                type_("number")
+              ])
+            ),
+            button2(
+              toList([on_click(new UserAddedTask())]),
+              toList([text2("Add")])
+            )
+          ]);
+        } else {
+          return toList([]);
+        }
+      })()
+    )
+  );
+}
+
+// build/dev/javascript/web/web.mjs
+var Model3 = class extends CustomType {
+  constructor(tasks, task_input) {
+    super();
+    this.tasks = tasks;
+    this.task_input = task_input;
+  }
+};
+var TaskInputMsg = class extends CustomType {
+  constructor(x0) {
+    super();
+    this[0] = x0;
+  }
+};
 var UserDeletedTask = class extends CustomType {
   constructor(x0) {
     super();
@@ -5788,105 +5965,38 @@ var ServerReturnedTasks = class extends CustomType {
     this[0] = x0;
   }
 };
-function init2(flags) {
-  return [new Model2(flags, false, "", now3(), 0), none()];
+function init3(flags) {
+  return [new Model3(flags, init2()), none()];
 }
-function update(model, msg) {
-  if (msg instanceof UserOpenedTaskMenu) {
+function update2(model, msg) {
+  if (msg instanceof TaskInputMsg && msg[0] instanceof UserAddedTask) {
     return [
-      (() => {
-        let _record = model;
-        return new Model2(
-          _record.tasks,
-          true,
-          _record.task_name,
-          _record.task_time,
-          _record.task_period
-        );
-      })(),
-      none()
-    ];
-  } else if (msg instanceof UserClosedTaskMenu) {
-    return [
-      (() => {
-        let _record = model;
-        return new Model2(
-          _record.tasks,
-          false,
-          _record.task_name,
-          _record.task_time,
-          _record.task_period
-        );
-      })(),
-      none()
-    ];
-  } else if (msg instanceof UserUpdatedTaskName) {
-    let input$1 = msg[0];
-    return [
-      (() => {
-        let _record = model;
-        return new Model2(
-          _record.tasks,
-          _record.task_menu_open,
-          input$1,
-          _record.task_time,
-          _record.task_period
-        );
-      })(),
-      none()
-    ];
-  } else if (msg instanceof UserUpdatedTaskTime) {
-    let input$1 = msg[0];
-    return [
-      (() => {
-        let _record = model;
-        return new Model2(
-          _record.tasks,
-          _record.task_menu_open,
-          _record.task_name,
-          unwrap(
-            map3(
-              parse_localized_datetime(input$1),
-              to_utc
-            ),
-            now3()
-          ),
-          _record.task_period
-        );
-      })(),
-      none()
-    ];
-  } else if (msg instanceof UserUpdatedTaskPeriod) {
-    let input$1 = msg[0];
-    return [
-      (() => {
-        let _record = model;
-        return new Model2(
-          _record.tasks,
-          _record.task_menu_open,
-          _record.task_name,
-          _record.task_time,
-          unwrap(parse_int(input$1), 0)
-        );
-      })(),
-      none()
-    ];
-  } else if (msg instanceof UserAddedTask) {
-    return [
-      new Model2(
+      new Model3(
         prepend(
           new Task(
-            model.task_name,
-            next_period(model.task_time, model.task_period),
-            model.task_period
+            model.task_input.task_name,
+            next_period(
+              model.task_input.task_time,
+              model.task_input.task_period
+            ),
+            model.task_input.task_period
           ),
           model.tasks
         ),
-        false,
-        "",
-        now3(),
-        0
+        update(model.task_input, new UserAddedTask())
       ),
+      none()
+    ];
+  } else if (msg instanceof TaskInputMsg) {
+    let msg$1 = msg[0];
+    return [
+      (() => {
+        let _record = model;
+        return new Model3(
+          _record.tasks,
+          update(model.task_input, msg$1)
+        );
+      })(),
       none()
     ];
   } else if (msg instanceof UserDeletedTask) {
@@ -5894,14 +6004,11 @@ function update(model, msg) {
     return [
       (() => {
         let _record = model;
-        return new Model2(
+        return new Model3(
           filter(model.tasks, (t) => {
             return !isEqual(t, task);
           }),
-          _record.task_menu_open,
-          _record.task_name,
-          _record.task_time,
-          _record.task_period
+          _record.task_input
         );
       })(),
       none()
@@ -5911,13 +6018,7 @@ function update(model, msg) {
     return [
       (() => {
         let _record = model;
-        return new Model2(
-          tasks,
-          _record.task_menu_open,
-          _record.task_name,
-          _record.task_time,
-          _record.task_period
-        );
+        return new Model3(tasks, _record.task_input);
       })(),
       none()
     ];
@@ -5925,116 +6026,63 @@ function update(model, msg) {
     return [
       (() => {
         let _record = model;
-        return new Model2(
-          toList([]),
-          _record.task_menu_open,
-          _record.task_name,
-          _record.task_time,
-          _record.task_period
-        );
+        return new Model3(toList([]), _record.task_input);
       })(),
       none()
     ];
   }
 }
-function view(model) {
+function view2(model) {
   return inject(
     default$(),
     () => {
       return div(
         toList([]),
-        prepend(
+        toList([
           h1(toList([]), toList([text2("Periodic")])),
-          prepend(
-            div(
-              toList([]),
-              map2(
-                model.tasks,
-                (task) => {
-                  return card(
-                    toList([
-                      round3(),
-                      padding2(spacing.md, spacing.md)
-                    ]),
-                    toList([
-                      content(
-                        toList([]),
-                        toList([
-                          text2(task.name),
-                          text2(
-                            to_string4(
-                              to_localized(
-                                next_period(task.time, task.period)
-                              )
-                            )
-                          ),
-                          button2(
-                            toList([
-                              on_click(new UserDeletedTask(task)),
-                              icon()
-                            ]),
-                            toList([text2("x")])
-                          )
-                        ])
-                      )
-                    ])
-                  );
-                }
-              )
-            ),
-            prepend(
-              button2(
-                toList([
-                  on_click(new UserOpenedTaskMenu()),
-                  icon()
-                ]),
-                toList([text2("+")])
-              ),
-              (() => {
-                let $ = model.task_menu_open;
-                if ($) {
-                  return toList([
-                    input2(
+          div(
+            toList([]),
+            map2(
+              model.tasks,
+              (task) => {
+                return card(
+                  toList([
+                    round3(),
+                    padding2(spacing.md, spacing.md)
+                  ]),
+                  toList([
+                    content(
+                      toList([]),
                       toList([
-                        on_input(
+                        text2(task.name),
+                        text2(
+                          to_string4(
+                            to_localized(
+                              next_period(task.time, task.period)
+                            )
+                          )
+                        ),
+                        button2(
+                          toList([
+                            on_click(new UserDeletedTask(task)),
+                            icon()
+                          ]),
+                          toList([text2("x")])
+                        ),
+                        map6(
+                          view(model.task_input),
                           (var0) => {
-                            return new UserUpdatedTaskName(var0);
+                            return new TaskInputMsg(var0);
                           }
                         )
                       ])
-                    ),
-                    input2(
-                      toList([
-                        on_input(
-                          (var0) => {
-                            return new UserUpdatedTaskTime(var0);
-                          }
-                        ),
-                        type_("datetime-local")
-                      ])
-                    ),
-                    input2(
-                      toList([
-                        on_input(
-                          (var0) => {
-                            return new UserUpdatedTaskPeriod(var0);
-                          }
-                        ),
-                        type_("number")
-                      ])
-                    ),
-                    button2(
-                      toList([on_click(new UserAddedTask())]),
-                      toList([text2("Add")])
                     )
-                  ]);
-                } else {
-                  return toList([]);
-                }
-              })()
+                  ])
+                );
+              }
             )
           )
-        )
+        ])
       );
     }
   );
@@ -6057,13 +6105,13 @@ function main2() {
     }
   })();
   debug(flags);
-  let app = application(init2, update, view);
+  let app = application(init3, update2, view2);
   let $ = start2(app, "#app", flags);
   if (!$.isOk()) {
     throw makeError(
       "let_assert",
       "web",
-      59,
+      47,
       "main",
       "Pattern match failed, no pattern matched the value.",
       { value: $ }

@@ -1,41 +1,29 @@
 import gleam/dynamic/decode
-import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
 import gleam/result
 import lustre
-import lustre/attribute
 import lustre/effect.{type Effect}
+import lustre/element
 import lustre/element/html
 import lustre/event
 import lustre/ui/button.{button}
 import lustre/ui/card.{card}
-import lustre/ui/input.{input}
 import lustre/ui/theme
 import plinth/browser/document
-import plinth/browser/element
+import plinth/browser/element as e
 import rsvp
 import shared/datetime
 import shared/task.{type Task, Task}
+import web/task_input
 
 pub type Model {
-  Model(
-    tasks: List(Task),
-    task_menu_open: Bool,
-    task_name: String,
-    task_time: datetime.DateTime(datetime.UTC),
-    task_period: Int,
-  )
+  Model(tasks: List(Task), task_input: task_input.Model)
 }
 
 pub type Msg {
-  UserOpenedTaskMenu
-  UserClosedTaskMenu
-  UserUpdatedTaskName(String)
-  UserUpdatedTaskTime(String)
-  UserUpdatedTaskPeriod(String)
-  UserAddedTask
+  TaskInputMsg(task_input.Msg)
   UserDeletedTask(Task)
   ServerReturnedTasks(Result(List(Task), rsvp.Error))
 }
@@ -43,7 +31,7 @@ pub type Msg {
 pub fn main() {
   let json =
     document.query_selector("#model")
-    |> result.map(element.inner_text)
+    |> result.map(e.inner_text)
 
   let flags = case
     json.parse(
@@ -62,49 +50,33 @@ pub fn main() {
 }
 
 fn init(flags) -> #(Model, Effect(Msg)) {
-  #(Model(flags, False, "", datetime.now(), 0), effect.none())
+  #(Model(flags, task_input.init()), effect.none())
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    UserOpenedTaskMenu -> #(Model(..model, task_menu_open: True), effect.none())
-    UserClosedTaskMenu -> #(
-      Model(..model, task_menu_open: False),
-      effect.none(),
-    )
-    UserUpdatedTaskName(input) -> #(
-      Model(..model, task_name: input),
-      effect.none(),
-    )
-    UserUpdatedTaskTime(input) -> #(
+    TaskInputMsg(task_input.UserAddedTask) -> #(
       Model(
-        ..model,
-        task_time: result.unwrap(
-          result.map(datetime.parse_localized_datetime(input), datetime.to_utc),
-          datetime.now(),
+        tasks: [
+          Task(
+            name: model.task_input.task_name,
+            time: datetime.next_period(
+              model.task_input.task_time,
+              model.task_input.task_period,
+            ),
+            period: model.task_input.task_period,
+          ),
+          ..model.tasks
+        ],
+        task_input: task_input.update(
+          model.task_input,
+          task_input.UserAddedTask,
         ),
       ),
       effect.none(),
     )
-    UserUpdatedTaskPeriod(input) -> #(
-      Model(..model, task_period: result.unwrap(int.parse(input), 0)),
-      effect.none(),
-    )
-    UserAddedTask -> #(
-      Model(
-        tasks: [
-          Task(
-            name: model.task_name,
-            time: datetime.next_period(model.task_time, model.task_period),
-            period: model.task_period,
-          ),
-          ..model.tasks
-        ],
-        task_menu_open: False,
-        task_name: "",
-        task_time: datetime.now(),
-        task_period: 0,
-      ),
+    TaskInputMsg(msg) -> #(
+      Model(..model, task_input: task_input.update(model.task_input, msg)),
       effect.none(),
     )
     UserDeletedTask(task) -> #(
@@ -142,29 +114,12 @@ pub fn view(model: Model) {
                 button([event.on_click(UserDeletedTask(task)), button.icon()], [
                   html.text("x"),
                 ]),
+                element.map(task_input.view(model.task_input), TaskInputMsg),
               ]),
             ],
           )
         }),
       ),
-      button([event.on_click(UserOpenedTaskMenu), button.icon()], [
-        html.text("+"),
-      ]),
-      ..case model.task_menu_open {
-        True -> [
-          input([event.on_input(UserUpdatedTaskName)]),
-          input([
-            event.on_input(UserUpdatedTaskTime),
-            attribute.type_("datetime-local"),
-          ]),
-          input([
-            event.on_input(UserUpdatedTaskPeriod),
-            attribute.type_("number"),
-          ]),
-          button([event.on_click(UserAddedTask)], [html.text("Add")]),
-        ]
-        False -> []
-      }
     ])
   })
 }
